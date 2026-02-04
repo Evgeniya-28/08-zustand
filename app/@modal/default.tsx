@@ -1,3 +1,5 @@
-export default function ModalDefault() {
+const NoteModal = () => {
   return null;
-}
+};
+
+export default NoteModal;

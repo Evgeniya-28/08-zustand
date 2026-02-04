@@ -1,14 +1,18 @@
-export default function FilterLayout({
-  children,
-  sidebar,
-}: {
-  children: React.ReactNode;
-  sidebar: React.ReactNode;
-}) {
+// app/notes/filter/layout.tsx
+import css from "./LayoutNotes.module.css";
+
+type Props = {
+  readonly children: React.ReactNode;
+  readonly sidebar: React.ReactNode;
+};
+
+const NotesLayout = ({ children, sidebar }: Props) => {
   return (
-    <div>
-      <aside>{sidebar}</aside>
-      <main>{children}</main>
-    </div>
+    <section className={css.container}>
+      <aside className={css.sidebar}>{sidebar}</aside>
+      <div className={css.notesWrapper}>{children}</div>
+    </section>
   );
-}
+};
+
+export default NotesLayout;

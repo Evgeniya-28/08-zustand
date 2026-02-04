@@ -1,5 +1,17 @@
 "use client";
 
-export default function Error() {
-  return <p>Something went wrong</p>;
+import css from "./NotesPage.module.css";
+
+type ErrorProps = {
+  readonly error: Error;
+};
+
+export default function Error({ error }: ErrorProps) {
+  return (
+    <div className={css.container}>
+      <p className={css.content}>
+        Could not fetch the list of notes. {error.message}
+      </p>
+    </div>
+  );
 }

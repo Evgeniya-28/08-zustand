@@ -1,62 +1,52 @@
 "use client";
-
-import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import css from "./NotePreview.module.css";
 import Modal from "@/components/Modal/Modal";
 import { fetchNoteById } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
+import { useParams, useRouter } from "next/navigation";
 
-type Props = {
-  id: string;
-};
-
-type Note = {
-  id: string;
-  title: string;
-  content: string;
-  tag: string;
-  createdAt: string;
-};
-
-export default function NoteModalClient({ id }: Props) {
+const NotePreviewClient = () => {
   const router = useRouter();
+  const closeModal = (): void => {
+    router.back();
+  };
+
+  const { id } = useParams<{ id: string }>();
 
   const {
     data: note,
     isLoading,
-    isError,
-  } = useQuery<Note>({
+    error,
+  } = useQuery({
     queryKey: ["note", id],
     queryFn: () => fetchNoteById(id),
     refetchOnMount: false,
   });
 
-  if (isLoading) {
-    return (
-      <Modal onClose={() => router.back()}>
-        <p>Loading note...</p>
-      </Modal>
-    );
-  }
+  if (isLoading) return <>Loading...</>;
+  if (error || !note) return <>Something went wrong. Please try again...</>;
 
-  if (isError || !note) {
-    return (
-      <Modal onClose={() => router.back()}>
-        <p>Failed to load note</p>
-      </Modal>
-    );
-  }
+  const formattedDate = note.updatedAt
+    ? `Updated at: ${note.updatedAt}`
+    : `Created at: ${note.createdAt}`;
 
   return (
-    <Modal onClose={() => router.back()}>
-      <h2>{note.title}</h2>
-      <p>{note.content}</p>
-      <p>
-        <strong>Tag:</strong> {note.tag}
-      </p>
-      <p>
-        <strong>Created:</strong>{" "}
-        {new Date(note.createdAt).toLocaleDateString()}
-      </p>
+    <Modal onClose={closeModal}>
+      <div className={css.container}>
+        <div className={css.item}>
+          <div className={css.header}>
+            <h2>{note.title}</h2>
+          </div>
+          <p className={css.content}>{note.content}</p>
+          <p className={css.date}>{formattedDate}</p>
+          <p className={css.tag}>{note.tag}</p>
+          <button className={css.backBtn} type="button" onClick={closeModal}>
+            Go back
+          </button>
+        </div>
+      </div>
     </Modal>
   );
-}
+};
+
+export default NotePreviewClient;

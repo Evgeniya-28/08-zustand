@@ -1,6 +1,8 @@
-export type NoteTag = "Todo" | "Work" | "Personal" | "Meeting" | "Shopping";
+// app/types/types.ts
 
-export interface Note {
+type NoteTag = "Work" | "Personal" | "Meeting" | "Shopping" | "Todo";
+
+interface Note {
   id: string;
   title: string;
   content: string;
@@ -9,8 +11,10 @@ export interface Note {
   updatedAt: string;
 }
 
-export type CreateNotePayload = {
+interface NoteFormValues {
   title: string;
-  content: string;
+  content?: string;
   tag: NoteTag;
-};
+}
+
+export type { Note, NoteFormValues, NoteTag };

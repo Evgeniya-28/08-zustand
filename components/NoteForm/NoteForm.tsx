@@ -1,73 +1,86 @@
+// app/components/NoteForm/NoteForm.tsx
 "use client";
 
-import { useState, FormEvent } from "react";
-import { useRouter } from "next/navigation";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useNoteStore, initialDraft } from "@/lib/store/noteStore";
-import { NoteTag } from "@/types/note";
-import { createNote } from "@/lib/api";
 import css from "./NoteForm.module.css";
+import { useRouter } from "next/navigation";
+import { useMutation } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { createNote } from "@/lib/api";
+import { useNoteDraftStore } from "@/lib/store/noteStore";
+import type { NoteFormValues, NoteTag } from "../../types/note";
 
-type NoteFormState = {
-  title: string;
-  content: string;
-  tag: NoteTag;
-};
-
-export default function NoteForm() {
+const NoteForm = () => {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const { draft, setDraft, clearDraft } = useNoteStore();
-
-  const [note, setNote] = useState<NoteFormState>({
-    ...initialDraft,
-    ...draft,
-    tag: (draft?.tag || initialDraft.tag) as NoteTag,
-  });
+  const { draft, setDraft, clearDraft } = useNoteDraftStore();
 
   const createNoteMutation = useMutation({
     mutationFn: createNote,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["notes"] });
       clearDraft();
-      router.back();
+      router.push("/notes/filter/all");
+    },
+    onError: () => {
+      toast.error("Failed to create the note. Please try again.");
     },
   });
 
-  const handleChange = (
-    e: React.ChangeEvent<
+  function handleInputChange(
+    event: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >,
-  ) => {
-    const { name, value } = e.target;
-    const updatedValue = name === "tag" ? (value as NoteTag) : value;
-    const updatedNote = { ...note, [name]: updatedValue };
+  ) {
+    setDraft({
+      ...draft,
+      [event.target.name]: event.target.value,
+    });
+  }
 
-    setNote(updatedNote);
-    setDraft(updatedNote);
-  };
+  function handleClickCancelBtn() {
+    router.push("/notes/filter/all");
+  }
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    createNoteMutation.mutate(note);
-  };
+  function handleSubmit(formData: FormData): void {
+    const title = (formData.get("title") as string) ?? "";
+    const content = (formData.get("content") as string) ?? "";
+    const tag: NoteTag = formData.get("tag") as NoteTag;
 
-  const handleCancel = () => router.back();
+    if ((title.length > 50 || title.length < 3) && content.length > 500) {
+      toast.error(
+        "Title must be between 3 and 50 characters and content can contain up to 500 characters!",
+      );
+      return;
+    }
+
+    if ((title.length > 50 || title.length < 3) && content.length < 500) {
+      toast.error("Title must be between 3 and 50 characters!");
+      return;
+    }
+
+    if (content.length > 500) {
+      toast.error("Content can contain up to 500 characters!");
+      return;
+    }
+
+    const values: NoteFormValues = {
+      title,
+      content,
+      tag,
+    };
+    console.log(values);
+    createNoteMutation.mutate(values);
+  }
 
   return (
-    <form className={css.form} onSubmit={handleSubmit}>
+    <form className={css.form} action={handleSubmit}>
       <div className={css.formGroup}>
         <label htmlFor="title">Title</label>
         <input
           type="text"
           id="title"
           name="title"
-          value={note.title}
-          onChange={handleChange}
           className={css.input}
-          required
-          minLength={3}
-          maxLength={50}
+          defaultValue={draft?.title}
+          onChange={handleInputChange}
         />
       </div>
 
@@ -76,11 +89,10 @@ export default function NoteForm() {
         <textarea
           id="content"
           name="content"
-          value={note.content}
-          onChange={handleChange}
-          className={css.textarea}
           rows={8}
-          maxLength={500}
+          className={css.textarea}
+          defaultValue={draft?.content}
+          onChange={handleInputChange}
         />
       </div>
 
@@ -89,9 +101,9 @@ export default function NoteForm() {
         <select
           id="tag"
           name="tag"
-          value={note.tag}
-          onChange={handleChange}
           className={css.select}
+          defaultValue={draft?.tag}
+          onChange={handleInputChange}
         >
           <option value="Todo">Todo</option>
           <option value="Work">Work</option>
@@ -105,7 +117,8 @@ export default function NoteForm() {
         <button
           type="button"
           className={css.cancelButton}
-          onClick={handleCancel}
+          disabled={createNoteMutation.isPending}
+          onClick={handleClickCancelBtn}
         >
           Cancel
         </button>
@@ -119,4 +132,6 @@ export default function NoteForm() {
       </div>
     </form>
   );
-}
+};
+
+export default NoteForm;

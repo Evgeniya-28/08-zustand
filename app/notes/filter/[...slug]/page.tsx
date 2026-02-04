@@ -1,88 +1,64 @@
-import { notFound } from "next/navigation";
-import { fetchNotes } from "@/lib/api";
-import NotesClient from "./Notes.client";
-import type { Metadata } from "next";
-import css from "NotePage.module.css";
+// app/notes/filter/[...slug]/page.tsx
 
+import { fetchNotes } from "@/lib/api";
 import {
-  HydrationBoundary,
   dehydrate,
+  HydrationBoundary,
   QueryClient,
 } from "@tanstack/react-query";
+import NotesClient from "./Notes.client";
+import { Metadata } from "next";
 
-const ALLOWED_SLUGS = ["work", "personal", "all"];
+type NotesByCategoryProps = {
+  readonly params: Promise<{ slug: string[] }>;
+  readonly searchParams: Promise<{
+    page?: string;
+    query?: string;
+  }>;
+};
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export async function generateMetadata({
   params,
-}: {
-  params: Promise<{ slug?: string[] }>;
-}): Promise<Metadata> {
+}: NotesByCategoryProps): Promise<Metadata> {
   const { slug } = await params;
-  const slugParam = slug?.[0];
-
-  if (!slugParam || !ALLOWED_SLUGS.includes(slugParam)) {
-    return {
-      title: "Notes | NoteHub",
-      description: "Filter notes in NoteHub",
-      openGraph: {
-        title: "Notes | NoteHub",
-        description: "Filter notes in NoteHub",
-        url: "https://your-vercel-url.vercel.app/notes/filter",
-        images: [
-          {
-            url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
-          },
-        ],
-      },
-    };
-  }
-
-  const tagName =
-    slugParam === "all"
-      ? "All"
-      : slugParam.charAt(0).toUpperCase() + slugParam.slice(1);
+  const tag = slug[0] === "all" ? "All" : slug[0];
 
   return {
-    title: `${tagName} notes | NoteHub`,
-    description: `Viewing ${tagName} notes in NoteHub`,
+    title: `${tag} notes`,
+    description: `All notes categorized as ${tag}`,
     openGraph: {
-      title: `${tagName} notes | NoteHub`,
-      description: `Viewing ${tagName} notes in NoteHub`,
-      url: `https://your-vercel-url.vercel.app/notes/filter/${slugParam}`,
+      title: `${tag} notes`,
+      description: `All notes categorized as ${tag}`,
+      url: `${SITE_URL}/notes/filter/${tag}`,
       images: [
         {
           url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+          width: 1200,
+          height: 630,
+          alt: `${tag} notes`,
         },
       ],
     },
   };
 }
 
-type Props = {
-  params: Promise<{ slug?: string[] }>;
-};
-
-export default async function NotesFilterPage({ params }: Props) {
+const NotesByCategory = async ({
+  params,
+  searchParams,
+}: NotesByCategoryProps) => {
   const { slug } = await params;
-  const slugParam = slug?.[0];
+  const tag = slug[0] === "all" ? undefined : slug[0];
 
-  if (!slugParam || !ALLOWED_SLUGS.includes(slugParam)) {
-    notFound();
-  }
-
-  const tag = slugParam === "all" ? undefined : slugParam;
+  const { page, query } = await searchParams;
+  const pageNumber = Number(page) || 1;
 
   const queryClient = new QueryClient();
 
   await queryClient.prefetchQuery({
-    queryKey: ["notes", 1, tag, ""],
-    queryFn: () =>
-      fetchNotes({
-        page: 1,
-        perPage: 12,
-        tag,
-        search: undefined,
-      }),
+    queryKey: ["notes", pageNumber, query, tag],
+    queryFn: () => fetchNotes(pageNumber, query, tag),
   });
 
   return (
@@ -90,4 +66,6 @@ export default async function NotesFilterPage({ params }: Props) {
       <NotesClient tag={tag} />
     </HydrationBoundary>
   );
-}
+};
+
+export default NotesByCategory;

@@ -1,49 +1,61 @@
-"use client";
+// app/components/NoteList/NoteList.tsx
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import type { Note } from "../../types/note";
-import { deleteNote } from "@/lib/api";
 import css from "./NoteList.module.css";
+import { useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
+import { deleteNote } from "@/lib/api";
+import type { Note } from "../../types/note";
+import Link from "next/link";
 
 interface NoteListProps {
-  notes: Note[];
+  readonly notes: Note[];
 }
 
-export default function NoteList({ notes }: NoteListProps) {
+function NoteList({ notes }: NoteListProps) {
   const queryClient = useQueryClient();
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const deleteMutation = useMutation<Note, Error, string>({
+  const deleteNoteMutation = useMutation({
     mutationFn: deleteNote,
-    onSuccess: () => {
+    onMutate: (id) => setDeletingId(id),
+    onSettled: () => {
+      setDeletingId(null);
       queryClient.invalidateQueries({ queryKey: ["notes"] });
+    },
+    onSuccess: () => {
+      toast.success("Note deleted successfully!");
+    },
+    onError: () => {
+      toast.error("Failed to delete the note. Please try again.");
     },
   });
 
   return (
     <ul className={css.list}>
-      {notes.map((note) => (
-        <li key={note.id} className={css.listItem}>
-          <h2 className={css.title}>{note.title}</h2>
-          <p className={css.content}>{note.content}</p>
-
-          <div className={css.footer}>
-            <span className={css.tag}>{note.tag}</span>
-
-            <Link href={`/notes/${note.id}`} className={css.link}>
-              View details
-            </Link>
-
-            <button
-              className={css.button}
-              onClick={() => deleteMutation.mutate(note.id)}
-              disabled={deleteMutation.isPending}
-            >
-              Delete
-            </button>
-          </div>
-        </li>
-      ))}
+      {notes.map(({ id, title, content, tag }) => {
+        return (
+          <li key={id} className={css.listItem}>
+            <h2 className={css.title}>{title}</h2>
+            <p className={css.content}>{content}</p>
+            <div className={css.footer}>
+              <span className={css.tag}>{tag}</span>
+              <Link className={css.link} href={`/notes/${id}`}>
+                View details
+              </Link>
+              <button
+                className={css.button}
+                disabled={deletingId === id}
+                onClick={() => deleteNoteMutation.mutate(id)}
+              >
+                Delete
+              </button>
+            </div>
+          </li>
+        );
+      })}
     </ul>
   );
 }
+
+export default NoteList;

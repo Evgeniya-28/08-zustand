@@ -1,22 +1,30 @@
-import type { Metadata } from "next";
+// app/not-found.tsx
+
+import { Metadata } from "next";
 import css from "./Home.module.css";
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export const metadata: Metadata = {
-  title: "Page not found | NoteHub",
-  description: "The page you are looking for does not exist",
+  title: "404 - Page not found",
+  description: "Sorry, the page you are looking for does not exist",
   openGraph: {
-    title: "Page not found | NoteHub",
-    description: "The page you are looking for does not exist",
-    url: "https://your-vercel-url.vercel.app/not-found",
+    title: "404 - Page not found",
+    description: "Sorry, the page you are looking for does not exist",
+    url: SITE_URL,
+    siteName: "NoteHub",
     images: [
       {
         url: "https://ac.goit.global/fullstack/react/notehub-og-meta.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Page not found",
       },
     ],
   },
 };
 
-export default function NotFound() {
+const NotFound = () => {
   return (
     <div className={css.container}>
       <h1 className={css.title}>404 - Page not found</h1>
@@ -25,4 +33,6 @@ export default function NotFound() {
       </p>
     </div>
   );
-}
+};
+
+export default NotFound;

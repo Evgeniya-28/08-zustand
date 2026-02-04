@@ -1,93 +1,69 @@
+// app/notes/Notes.client.tsx
+
 "use client";
 
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { useDebounce } from "use-debounce";
+import css from "./NotesPage.module.css";
+import { useEffect, useState } from "react";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useDebouncedCallback } from "use-debounce";
+import toast, { Toaster } from "react-hot-toast";
+import { fetchNotes } from "@/lib/api";
+import SearchBox from "@/components/SearchBox/SearchBox";
+import Pagination from "@/components/Pagination/Pagination";
+import NoteList from "@/components/NoteList/NoteList";
 import Link from "next/link";
 
-import { fetchNotes, type FetchNotesResponse } from "@/lib/api";
-import type { NoteTag } from "@/types/note";
+type NotesClientProps = {
+  readonly tag?: string;
+};
 
-import SearchBox from "@/components/SearchBox/SearchBox";
-import NoteList from "@/components/NoteList/NoteList";
-import Pagination from "@/components/Pagination/Pagination";
-
-import css from "./NotesPage.module.css";
-
-const PER_PAGE = 12;
-
-const VALID_TAGS: NoteTag[] = [
-  "Todo",
-  "Work",
-  "Personal",
-  "Meeting",
-  "Shopping",
-];
-
-interface NotesClientProps {
-  tag?: string;
-}
-
-function formatTag(tag?: string): NoteTag | undefined {
-  if (!tag) return undefined;
-  const formatted = tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
-  return VALID_TAGS.includes(formatted as NoteTag)
-    ? (formatted as NoteTag)
-    : undefined;
-}
-
-export default function NotesClient({ tag }: NotesClientProps) {
+const NotesClient = ({ tag }: NotesClientProps) => {
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [debouncedSearch] = useDebounce(search, 500);
+  const [query, setQuery] = useState<string | undefined>(undefined);
 
-  const validTag = formatTag(tag);
-
-  const { data, isFetching } = useQuery<FetchNotesResponse>({
-    queryKey: ["notes", page, validTag, debouncedSearch],
-    queryFn: () =>
-      fetchNotes({
-        page,
-        perPage: PER_PAGE,
-        tag: validTag,
-        search: debouncedSearch || undefined,
-      }),
+  const { data, isSuccess, isPending } = useQuery({
+    queryKey: ["notes", page, query, tag],
+    queryFn: () => fetchNotes(page, query, tag),
+    placeholderData: keepPreviousData,
+    refetchOnMount: false,
   });
 
-  const notes = data?.notes ?? [];
-  const totalPages = data?.totalPages ?? 1;
+  useEffect(() => {
+    if (isSuccess && !isPending && data?.notes.length === 0) {
+      toast.error("No notes found for your request.");
+    }
+  }, [data?.notes.length, isSuccess, isPending]);
+
+  const handleChangeQuery = useDebouncedCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setPage(1);
+      setQuery(event.target.value.trim());
+    },
+    1000,
+  );
+
+  const notes = data?.notes || [];
+  const totalPages = data?.totalPages || 0;
 
   return (
     <div className={css.app}>
       <header className={css.toolbar}>
-        <SearchBox
-          value={search}
-          onChange={(value) => {
-            setSearch(value);
-            setPage(1);
-          }}
-        />
-
+        <SearchBox onChange={handleChangeQuery} />
         {totalPages > 1 && (
-          <Pagination
-            pageCount={totalPages}
-            currentPage={page}
-            onPageChange={setPage}
-          />
+          <Pagination page={page} totalPages={totalPages} onChange={setPage} />
         )}
-
-        <Link href="/notes/action/create" className={css.button}>
+        <Link
+          href={"/notes/action/create"}
+          aria-label="Create note"
+          className={css.button}
+        >
           Create note +
         </Link>
       </header>
-
-      {isFetching ? (
-        <p>Loading notes...</p>
-      ) : notes.length === 0 ? (
-        <p>No notes found</p>
-      ) : (
-        <NoteList notes={notes} />
-      )}
+      {notes.length > 0 && <NoteList notes={notes} />}
+      <Toaster />
     </div>
   );
-}
+};
+
+export default NotesClient;
